@@ -3,6 +3,9 @@ uuid = "0e8fedee-8449-494f-bc56-38aa67d62559"
 authors = ["Andreas Tell <atell@soundtheory.com> and contributors"]
 version = "0.1.0"
 
+[deps]
+CliffordAlgebras = "ca841f6f-225c-4bbd-a467-7a3512dfa6f6"
+
 [compat]
 julia = "1.6"
 
