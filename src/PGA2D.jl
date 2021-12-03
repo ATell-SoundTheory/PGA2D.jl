@@ -4,7 +4,7 @@ using CliffordAlgebras
 
 import Base.join, Base.show
 
-export pga2d
+export pga2d, PGA2DT, PGA2DMV
 export e0,e1,e2, e01, e12, e20, e012
 export direction, point, line
 export point_coordinates
@@ -174,5 +174,29 @@ end
 reflect_line(x::PGA2DMV, l::PGA2DMV) = l * x * l
 
 normalize(x::PGA2DMV) = x / norm(x)
+
+
+using Plots
+
+@recipe function multivector_plot_recipe(mv::PGA2DMV)
+    if is_point(mv)
+        seriestype := :path
+        markershape --> :circle
+        markersize --> 5
+        (x,y) = point_coordinates(mv)
+        [x],[y]
+    elseif is_line(mv)
+        seriestype := :straightline
+        (a,b,c) = line_coordinates(mv)
+        if abs(a) > abs(b)
+            [-c/a, -c/a+b],[0,-a]
+        else
+            [0,-b],[-c/b, -c/b+a]
+        end
+    else
+        nothing
+    end
+end
+
 
 end
