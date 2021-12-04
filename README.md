@@ -56,7 +56,7 @@ julia> is_direction(p)
 false
 ```
 
-If you would like to work with the MultiVectors directly, you can use the exported symbols `pga2d` for the global algebra instance and `PGA2DMV` for the MultiVector type. The basis vectors for Clifford(2,0,1) are also exported as `e0`, `e1`, `e2`, `e01`, `e12`, `e20`, `e012` or alternatively `𝐈`. For full support of the underlying Clifford Algebra, you can import `CliffordAlgebras.jl`.
+If you would like to work with the MultiVectors directly, you can use the exported symbols `pga2d` for the global algebra instance and `PGA2DMV` for the MultiVector type. The basis vectors for Clifford(2,0,1) are also exported as `e0`, `e1`, `e2`, `e01`, `e12`, `e20`, `e012` or alternatively `𝐈`. For full support of the underlying Clifford Algebra, you can import `CliffordAlgebras`.
 
 The recommended use of this package is to rely on the available higher-level functions that act on points, directions and lines. Because the type of all objects is that of the MultiVector `PGA2DMV`, the geometric functions can not check for the proper type. You can provide a line in place of a point and get a MultiVector as a result. To make sure you are aware of the expected object, the nomenclature of the functions is designed to indicate both the kind of object returned and the expected argument types.
 
@@ -169,3 +169,4 @@ julia> plot(C ; aspect_ratio = :equal)
 ```
 ![Triangle construction C](https://raw.githubusercontent.com/ATell-SoundTheory/Constructions.jl/main/docs/img/triangle3.svg "Triangle Construction C")
 
+For a more detailed discussion of the capabilities of `Constructions.jl` please see the package website.
