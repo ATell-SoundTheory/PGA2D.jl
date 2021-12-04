@@ -19,7 +19,7 @@ julia> direction(2,1)
 direction(2, 1) ≜ +1×e0e1+2×e2e0 ∈ Cl(2, 0, 1)
 ```
 
-Line coordinates are given as the coefficients $(a,b,c)$ in the line equation $a x + b y + c = 0$. Coordinates can be extracted from MultiVectors:
+Line coordinates are given as the coefficients (a,b,c) in the line equation a x + b y + c = 0. Coordinates can be extracted from MultiVectors:
 
 ```
 julia> point_coordinates(point(-2,1))
@@ -75,4 +75,41 @@ line(-0.7071067811865475, 0.7071067811865475, 0.0) ≜ -1×e1+1×e2 ∈ Cl(2, 0,
 
 There are many more functions that allow us to intersect two lines, find the line passing through to two points, find distances and angles, bisect angles and distances, calculate areas and transform objects using motors. Functions that are missing should be easily composable from the functions in this package.
 
+The two-dimensional plane-based geometric algebra can be used for 2D constructive geometry with lines and points. The package [Constructions.jl](https://github.com/ATell-SoundTheory/Constructions.jl) provides the necessary framework for such constructions:
+
+```
+julia> using PGA2D, Constructions, Plots
+
+julia> C = Construction()
+
+julia> julia> @place C "P1" point(0,0)
+point(0.0, 0.0) ≜ +1×e1e2 ∈ Cl(2, 0, 1)
+
+julia> @place C "P2" point(1,0)
+point(1.0, 0.0) ≜ +1×e1e2+1×e2e0 ∈ Cl(2, 0, 1)
+
+julia> @place C "P3" point(0,1)
+point(0.0, 1.0) ≜ +1×e1e2+1×e0e1 ∈ Cl(2, 0, 1)
+
+julia> @construct C "L12" join_pp "P1" "P2"
+line(0.0, 1.0, 0.0) ≜ +1×e2 ∈ Cl(2, 0, 1)
+
+julia> @construct C "L13" join_pp "P1" "P3"
+line(-1.0, 0.0, 0.0) ≜ -1×e1 ∈ Cl(2, 0, 1)
+
+julia> @construct C "L23" join_pp "P2" "P3"
+line(-0.7071067811865475, -0.7071067811865475, 0.7071067811865475) ≜ -1×e1-1×e2+1×e0 ∈ Cl(2, 0, 1)
+
+julia> C
+P2: point(1.0, 0.0) ≜ +1×e1e2+1×e2e0 ∈ Cl(2, 0, 1); 
+P1: point(0.0, 0.0) ≜ +1×e1e2 ∈ Cl(2, 0, 1); 
+P3: point(0.0, 1.0) ≜ +1×e1e2+1×e0e1 ∈ Cl(2, 0, 1); 
+{P2, P1, } => L12: line(0.0, 1.0, 0.0) ≜ +1×e2 ∈ Cl(2, 0, 1); 
+{P1, P3, } => L13: line(-1.0, 0.0, 0.0) ≜ -1×e1 ∈ Cl(2, 0, 1); 
+{P2, P3, } => L23: line(-0.7071067811865475, -0.7071067811865475, 0.7071067811865475) ≜ -1×e1-1×e2+1×e0 ∈ Cl(2, 0, 1); 
+
+julia> plot(C ; aspect_ration = :equal)
+
+
+```
 
