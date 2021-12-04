@@ -33,17 +33,17 @@ using Test
         P3 = point(3,1)
         P4 = point(1,2)
 
-        l1 = join(P1,P2)
-        l2 = join(P2,P3)
-        l3 = join(P3,P4)
-        l4 = join(P4,P1)
+        l1 = join_pp(P1,P2)
+        l2 = join_pp(P2,P3)
+        l3 = join_pp(P3,P4)
+        l4 = join_pp(P4,P1)
 
-        @test point_coordinates(meet(l1,l2)) == point_coordinates(P2)
-        @test point_coordinates(meet(l2,l3)) == point_coordinates(P3)
-        @test point_coordinates(meet(l3,l4)) == point_coordinates(P4)
-        @test point_coordinates(meet(l4,l1)) == point_coordinates(P1)
+        @test point_coordinates(meet_ll(l1,l2)) == point_coordinates(P2)
+        @test point_coordinates(meet_ll(l2,l3)) == point_coordinates(P3)
+        @test point_coordinates(meet_ll(l3,l4)) == point_coordinates(P4)
+        @test point_coordinates(meet_ll(l4,l1)) == point_coordinates(P1)
 
-        @test point_coordinates(meet(join(P1,P2),join(P3,P4))) == (5.0,0.0)
+        @test point_coordinates(meet_ll(join_pp(P1,P2),join_pp(P3,P4))) == (5.0,0.0)
 
    end  
 
