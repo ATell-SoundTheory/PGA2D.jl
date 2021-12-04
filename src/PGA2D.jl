@@ -24,8 +24,9 @@ export dist_ll
 export angle_ll
 export angle_dl
 export dist_orient_lp
-export line_bisect_ll
-export line_bisect_pp
+export l_bisect_ll
+export l_bisect_pp
+export p_bisect_pp
 export reflect_l
 export area_ppp
 export area_loop
@@ -252,22 +253,31 @@ Calculates the oriented Euclidean distance between the line l and the point P.
 dist_orient_lp(l::PGA2DMV, P::PGA2DMV) = scalar(P ∨ l) / (norm(P) * norm(l))
 
 """
-    line_bisect_ll(l1::PGA2DMV, l2::PGA2DMV)
+    l_bisect_ll(l1::PGA2DMV, l2::PGA2DMV)
 
 Calculates both angle-bisecting lines between l1 and l2 and return them in a tuple of MultiVectors.
 """
-line_bisect_ll(l1::PGA2DMV, l2::PGA2DMV) = (l1 + l2, l1 - l2) .* inv(norm(l1) * norm(l2))
+l_bisect_ll(l1::PGA2DMV, l2::PGA2DMV) = (l1 + l2, l1 - l2) .* inv(norm(l1) * norm(l2))
 
 """
-    line_bisect_pp(P1::PGA2DMV, P2::PGA2DMV)
+    l_bisect_pp(P1::PGA2DMV, P2::PGA2DMV)
 
 Calculates the orthogonal bisecting line between the points P1 and P2.
 """
-function line_bisect_pp(P1::PGA2DMV, P2::PGA2DMV) 
+function l_bisect_pp(P1::PGA2DMV, P2::PGA2DMV) 
     P1n = normalize(P1)
     P2n = normalize(P2)
-    (P1n + P2n) * (P1n ∨ P2n)
+    (P1n + P2n) ×₋ (P1n ∨ P2n)
 end
+
+
+"""
+    p_bisect_pp(P1::PGA2DMV, P2::PGA2DMV)
+
+Calculates the midpoint between P1 and P2.
+"""
+p_bisect_pp(P1::PGA2DMV, P2::PGA2DMV) = normalize(P1) + normalize(P2)
+
 
 """
     reflect_l(x::PGA2DMV, l::PGA2DMV)

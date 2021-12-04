@@ -75,14 +75,18 @@ line(-0.7071067811865475, 0.7071067811865475, 0.0) ≜ -1×e1+1×e2 ∈ Cl(2, 0,
 
 There are many more functions that allow us to intersect two lines, find the line passing through to two points, find distances and angles, bisect angles and distances, calculate areas and transform objects using motors. Functions that are missing should be easily composable from the functions in this package.
 
-The two-dimensional plane-based geometric algebra can be used for 2D constructive geometry with lines and points. The package [Constructions.jl](https://github.com/ATell-SoundTheory/Constructions.jl) provides the necessary framework for such constructions:
+The two-dimensional plane-based geometric algebra can be used for 2D constructive geometry with lines and points. The package [Constructions.jl](https://github.com/ATell-SoundTheory/Constructions.jl) provides the necessary framework for such constructions.
+
+Let's construct a triangle:
 
 ```
 julia> using PGA2D, Constructions, Plots
 
+julia> plotly()
+
 julia> C = Construction()
 
-julia> julia> @place C "P1" point(0,0)
+julia> @place C "P1" point(0,0)
 point(0.0, 0.0) ≜ +1×e1e2 ∈ Cl(2, 0, 1)
 
 julia> @place C "P2" point(1,0)
@@ -100,16 +104,68 @@ line(-1.0, 0.0, 0.0) ≜ -1×e1 ∈ Cl(2, 0, 1)
 julia> @construct C "L23" join_pp "P2" "P3"
 line(-0.7071067811865475, -0.7071067811865475, 0.7071067811865475) ≜ -1×e1-1×e2+1×e0 ∈ Cl(2, 0, 1)
 
+julia> plot(C ; aspect_ratio = :equal)
+```
+![Triangle construction C](https://raw.githubusercontent.com/ATell-SoundTheory/Constructions.jl/main/docs/img/triangle1.svg "Triangle Construction C")
+
+Now we can construct the perimeter center point ...
+
+```
+julia> @construct C "Lb12" l_bisect_pp "P1" "P2"
+line(1.0, -0.0, -0.5) ≜ +2.0×e1-1.0×e0 ∈ Cl(2, 0, 1)
+
+julia> @construct C "Lb23" l_bisect_pp "P2" "P3"
+line(-0.7071067811865475, 0.7071067811865475, 0.0) ≜ -2.0×e1+2.0×e2 ∈ Cl(2, 0, 1)
+
+julia> @construct C "Pcirc" meet_ll "Lb12" "Lb23"
+point(0.5, 0.5) ≜ +4.0×e1e2+2.0×e0e1+2.0×e2e0 ∈ Cl(2, 0, 1)
+```
+
+... and the center of gravity:
+
+```
+julia> @construct C "Lb1" (l1,l2)->l_bisect_ll(l1,l2)[1] "L12" "L13"
+line(-0.7071067811865475, 0.7071067811865475, 0.0) ≜ -1.0×e1+1.0×e2 ∈ Cl(2, 0, 1)
+
+julia> @construct C "Lb2" (l1,l2)->l_bisect_ll(l1,l2)[2] "L12" "L23"
+line(0.4472135954999579, 0.8944271909999159, -0.4472135954999579) ≜ +0.7071067811865475×e1+1.414213562373095×e2-0.7071067811865475×e0 ∈ Cl(2, 0, 1)
+
+julia> @construct C "Pcog" meet_ll "Lb1" "Lb2"
+point(0.3333333333333333, 0.3333333333333333) ≜ -2.1213203435596424×e1e2-0.7071067811865475×e0e1-0.7071067811865475×e2e0 ∈ Cl(2, 0, 1)
+```
+
+Plotting the result shows our work so far:
+
+```
+julia> plot(C ; aspect_ratio = :equal)
+```
+![Triangle construction C](https://raw.githubusercontent.com/ATell-SoundTheory/Constructions.jl/main/docs/img/triangle2.svg "Triangle Construction C")
+
+The construction object `C` has stored all the rules required for the construction:
+
+```
 julia> C
 P2: point(1.0, 0.0) ≜ +1×e1e2+1×e2e0 ∈ Cl(2, 0, 1); 
 P1: point(0.0, 0.0) ≜ +1×e1e2 ∈ Cl(2, 0, 1); 
 P3: point(0.0, 1.0) ≜ +1×e1e2+1×e0e1 ∈ Cl(2, 0, 1); 
+{P2, P3, } => Lb23: line(-0.7071067811865475, 0.7071067811865475, 0.0) ≜ -2.0×e1+2.0×e2 ∈ Cl(2, 0, 1); 
 {P2, P1, } => L12: line(0.0, 1.0, 0.0) ≜ +1×e2 ∈ Cl(2, 0, 1); 
 {P1, P3, } => L13: line(-1.0, 0.0, 0.0) ≜ -1×e1 ∈ Cl(2, 0, 1); 
 {P2, P3, } => L23: line(-0.7071067811865475, -0.7071067811865475, 0.7071067811865475) ≜ -1×e1-1×e2+1×e0 ∈ Cl(2, 0, 1); 
+{P2, P1, } => Lb12: line(1.0, -0.0, -0.5) ≜ +2.0×e1-1.0×e0 ∈ Cl(2, 0, 1); 
+{L12, L23, } => Lb2: line(0.4472135954999579, 0.8944271909999159, -0.4472135954999579) ≜ +0.7071067811865475×e1+1.414213562373095×e2-0.7071067811865475×e0 ∈ Cl(2, 0, 1); 
+{L12, L13, } => Lb1: line(-0.7071067811865475, 0.7071067811865475, 0.0) ≜ -1.0×e1+1.0×e2 ∈ Cl(2, 0, 1); 
+{Lb23, Lb12, } => Pcirc: point(0.5, 0.5) ≜ +4.0×e1e2+2.0×e0e1+2.0×e2e0 ∈ Cl(2, 0, 1); 
+{Lb1, Lb2, } => Pcog: point(0.3333333333333333, 0.3333333333333333) ≜ -2.1213203435596424×e1e2-0.7071067811865475×e0e1-0.7071067811865475×e2e0 ∈ Cl(2, 0, 1); 
+```
 
-julia> plot(C ; aspect_ration = :equal)
-
+We can see that the points `P1`, `P2` and `P3` that have been inserted with `@place` do not have any dependencies, but they do appear as dependencies of other geometric elements. We can modify these points and the entire construction will update:
 
 ```
+julia> @modify C "P1" point(0.25,-0.5)
+point(0.25, -0.5) ≜ +1.0×e1e2-0.5×e0e1+0.25×e2e0 ∈ Cl(2, 0, 1)
+
+julia> plot(C ; aspect_ratio = :equal)
+```
+![Triangle construction C](https://raw.githubusercontent.com/ATell-SoundTheory/Constructions.jl/main/docs/img/triangle3.svg "Triangle Construction C")
 
