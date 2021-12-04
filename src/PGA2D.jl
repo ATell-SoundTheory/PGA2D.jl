@@ -257,7 +257,11 @@ dist_orient_lp(l::PGA2DMV, P::PGA2DMV) = scalar(P ∨ l) / (norm(P) * norm(l))
 
 Calculates both angle-bisecting lines between l1 and l2 and return them in a tuple of MultiVectors.
 """
-l_bisect_ll(l1::PGA2DMV, l2::PGA2DMV) = (l1 + l2, l1 - l2) .* inv(norm(l1) * norm(l2))
+function l_bisect_ll(l1::PGA2DMV, l2::PGA2DMV)
+    l1n = normalize(l1)
+    l2n = normalize(l2)
+    (l1n + l2n, l1n - l2n)
+end
 
 """
     l_bisect_pp(P1::PGA2DMV, P2::PGA2DMV)
