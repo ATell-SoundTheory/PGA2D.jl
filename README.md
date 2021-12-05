@@ -169,4 +169,21 @@ julia> plot(C ; aspect_ratio = :equal)
 ```
 ![Triangle construction C](https://raw.githubusercontent.com/ATell-SoundTheory/Constructions.jl/main/docs/img/triangle3.svg "Triangle Construction C")
 
+
+We can also create an animation to show how the construction adapts to changes:
+
+```
+julia> gr()
+Plots.GRBackend()
+
+julia> pl = plot()
+
+julia> @gif for x = 0:59
+           @modify C "P1" point(-0.5+0.2*cos(2*pi*x/60), -0.5+0.5*sin(2*pi*x/60))
+           plot(pl, C, xlims = (-1.3,1.8), ylims = (-1.1,1.1) )
+        end
+```
+![Triangle construction C](https://raw.githubusercontent.com/ATell-SoundTheory/Constructions.jl/main/docs/img/triangle_anim.gif "Triangle Construction C")
+
+
 For a more detailed discussion of the capabilities of `Constructions.jl` please see the package website.
