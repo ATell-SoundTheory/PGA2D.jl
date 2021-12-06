@@ -162,7 +162,17 @@ function show(io::IO, x::PGA2DMV)
     elseif is_line(x)
         print(io, "line", line_coordinates(normalize(x)), " ≜ ")
     elseif is_motor(x)
-        print(io, "motor", " ≜ ")
+        m = normalize(x)
+        P = grade(m,2)
+        if is_point(P)
+            orientation = sign(P.e1e2)
+            α = 2 * orientation * atan(norm(P), scalar(m))
+            print(io, "motor: rotation $(α/π)π around $P", " ≜ ")
+        elseif is_direction(P)
+            d = 2 * sqrt(P.e0e1^2 + P.e2e0^2)
+            d_ortho = (P.e2e0,-P.e0e1).*(2/d)
+            print(io, "motor: translation $d direction $(d_ortho)", " ≜ ")
+        end
     end
     show_multivector(io, x)
 end
@@ -332,7 +342,13 @@ end
 
 Calculates the motor for a rotation by the angle α around P. If P is a direction, then the motor describes a translation by α orthogonal to the direction.
 """
-motor_pa(P::PGA2DMV, α::Real) = exp(α/2*P)
+function motor_pa(P::PGA2DMV, α::Real)
+    if is_direction(P)
+        1 + α/(2*sqrt(P.e0e1^2+P.e2e0^2)) * P
+    else
+        exp(α/2*normalize(P))
+    end
+end
 
 """
     motor_ll(l1::PGA2DMV, l2::PGA2DMV)
