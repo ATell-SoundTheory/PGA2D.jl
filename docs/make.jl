@@ -15,6 +15,7 @@ makedocs(;
     ),
     pages=[
         "Home" => "index.md",
+        "Triangle centers" => "triangle_centers.md",
     ],
 )
 

@@ -10,6 +10,9 @@ export direction, point, line
 export point_coordinates
 export direction_coordinates
 export line_coordinates
+export try_point_coordinates
+export try_direction_coordinates
+export try_line_coordinates
 export is_point, is_direction
 export is_line, is_motor
 export normalize
@@ -21,8 +24,13 @@ export l_para_lp
 export d_ortho_l
 export dist_pp
 export dist_ll
+export dist_lp
 export angle_ll
 export angle_dl
+export angle_dd
+export angle_ll_signed
+export angle_dl_signed
+export angle_dd_signed
 export dist_orient_lp
 export l_bisect_ll
 export l_bisect_pp
@@ -36,6 +44,15 @@ export motor_ll
 export move_pa
 export move_ll
 export move_m
+export line_pd
+export incenter_ppp
+export circumcenter_ppp
+export orthocenter_ppp
+export try_incenter_ppp
+export try_circumcenter_ppp
+export try_orthocenter_ppp
+export incircle_ppp
+export circumcircle_ppp
 
 const pga2d = CliffordAlgebra(:PGA2D)
 const PGA2DT = typeof(pga2d)
@@ -71,9 +88,14 @@ direction(x::Real, y::Real) = x * e20 + y * e01
 """
     line(a::Real, b::Real, c::Real)
 
-Constructs a MultiVector that encodes a line ax + bx + c = 0.
+Constructs a MultiVector that encodes a line a·x + b·y + c = 0.
 """
 line(a::Real, b::Real, c::Real) = a * e1 + b * e2 + c * e0
+
+# Convenience constructors
+point(t::Tuple{<:Real,<:Real}) = point(t[1], t[2])
+direction(t::Tuple{<:Real,<:Real}) = direction(t[1], t[2])
+line(t::Tuple{<:Real,<:Real,<:Real}) = line(t[1], t[2], t[3])
 
 """
     point_coordinates(P::PGA2DMV)
@@ -180,9 +202,54 @@ end
 """
     normalize(x::PGA2DMV)
 
-Scales the MultiVector x so that it has unit norm.
+Scales the MultiVector x so that it has unit norm. Throws a DomainError for zero-norm inputs.
 """
-normalize(x::PGA2DMV) = x / norm(x)
+function normalize(x::PGA2DMV)
+    n = norm(x)
+    if n == 0
+        throw(DomainError(x, " cannot be normalized (zero norm)."))
+    end
+    x / n
+end
+
+"""
+    try_point_coordinates(P::PGA2DMV) -> Union{Tuple{<:Real,<:Real},Nothing}
+
+Non-throwing variant of `point_coordinates`. Returns `(x,y)` or `nothing` if `P` is not a point.
+"""
+function try_point_coordinates(P::PGA2DMV)
+    w = P.e1e2
+    if isgrade(P,2) && !iszero(w)
+        wi = inv(w)
+        return wi.*(P.e2e0, P.e0e1)
+    end
+    nothing
+end
+
+"""
+    try_direction_coordinates(d::PGA2DMV) -> Union{Tuple{<:Real,<:Real},Nothing}
+
+Non-throwing variant of `direction_coordinates`. Returns `(x,y)` or `nothing` if `d` is not a direction.
+"""
+function try_direction_coordinates(d::PGA2DMV)
+    w = d.e1e2
+    if isgrade(d,2) && iszero(w) && !iszero(d)
+        return (d.e2e0, d.e0e1)
+    end
+    nothing
+end
+
+"""
+    try_line_coordinates(l::PGA2DMV) -> Union{Tuple{<:Real,<:Real,<:Real},Nothing}
+
+Non-throwing variant of `line_coordinates`. Returns `(a,b,c)` or `nothing` if `l` is not a line.
+"""
+function try_line_coordinates(l::PGA2DMV)
+    if isgrade(l,1) && (!iszero(l.e1) || !iszero(l.e2))
+        return (l.e1, l.e2, l.e0)
+    end
+    nothing
+end
 
 """
     meet_ll(l1::PGA2DMV, l2::PGA2DMV)
@@ -237,7 +304,17 @@ dist_pp(P1::PGA2DMV, P2::PGA2DMV) = norm(P1 ∨ P2) / (norm(P1) * norm(P2))
 """
     dist_ll(l1::PGA2DMV, l2::PGA2DMV)
 
-Calculates the orthogonal Euclidean distance between parallel lines l1 and l2.
+Calculates the orthogonal Euclidean distance between parallel lines `l1` and `l2`.
+
+Notes
+- This quantity is well-defined as the perpendicular distance only when the two lines are parallel.
+- For almost-parallel lines with a small angle φ between them, `dist_ll` equals the parallel offset multiplied by `cos(φ)`. Hence, as the lines deviate from perfect parallelity, the returned value decreases by a factor `≈ 1 - φ^2/2` (second-order in φ).
+- For non-parallel lines (intersecting), this is not the minimal point-to-line distance (which is 0); it returns the component of the offset along the common normal as if the lines were treated as nearly parallel. No attempt is made to detect parallelism.
+
+Example
+Let `l1: y = 0` and `l2: y = d + m x`. Then `l1 = line(0, 1, 0)` and `l2 = line(m, -1, d)`. One finds
+`dist_ll(l1, l2) = |d| / √(1 + m^2) = |d| cos(φ)`, where `φ = atan(m)` is the angle between the two lines.
+Thus for `m → 0` (nearly parallel) the value approaches `|d|` with a relative error `≈ m^2/2`.
 """
 dist_ll(l1::PGA2DMV, l2::PGA2DMV) = norm(dual(l1 ∧ l2)) / (norm(l1) * norm(l2))
 
@@ -246,14 +323,74 @@ dist_ll(l1::PGA2DMV, l2::PGA2DMV) = norm(dual(l1 ∧ l2)) / (norm(l1) * norm(l2)
 
 Calculates the angle between two lines l1 and l2.
 """
-angle_ll(l1::PGA2DMV, l2::PGA2DMV) = asin( norm(l1 ∧ l2) / (norm(l1) * norm(l2)))
+angle_ll(l1::PGA2DMV, l2::PGA2DMV) = begin
+    s = norm(l1 ∧ l2) / (norm(l1) * norm(l2))
+    asin(clamp(s, -1.0, 1.0))
+end
 
 """
     angle_dl(d::PGA2DMV, l2::PGA2DMV)
 
 Calculates the angle between the direction d and the line l.
 """
-angle_dl(d::PGA2DMV, l::PGA2DMV) = asin( norm(dual(d ∧ l)) / (norm(d) * norm(l)))
+angle_dl(d::PGA2DMV, l::PGA2DMV) = begin
+    s = norm(dual(d ∧ l)) / (norm(d) * norm(l))
+    asin(clamp(s, -1.0, 1.0))
+end
+
+"""
+    angle_dl_signed(d::PGA2DMV, l::PGA2DMV)
+
+Signed angle from direction `d` to the tangent of line `l` in (-π, π]. The line's tangent is chosen as (-b, a) for `l = a e1 + b e2 + c e0`.
+"""
+function angle_dl_signed(d::PGA2DMV, l::PGA2DMV)
+    (dx, dy) = direction_coordinates(d)
+    (a, b, _) = line_coordinates(l)
+    # Tangent direction of the line: base (b, -a) so that for y=0 (a=0,b=1) tangent is +x.
+    tx, ty = b, -a
+    # Choose orientation to align tangent with the reference direction d
+    if dx * tx + dy * ty < 0
+        tx = -tx; ty = -ty
+    end
+    dot = dx * tx + dy * ty
+    cross = dx * ty - dy * tx
+    atan(cross, dot)
+end
+
+"""
+    dist_lp(l::PGA2DMV, P::PGA2DMV)
+
+Unsigned Euclidean distance between line `l` and point `P`.
+"""
+dist_lp(l::PGA2DMV, P::PGA2DMV) = abs(dist_orient_lp(l, P))
+
+"""
+    angle_dd(d1::PGA2DMV, d2::PGA2DMV)
+
+Angle between directions `d1` and `d2`.
+Computes from Euclidean coordinates to avoid null-norm issues.
+"""
+function angle_dd(d1::PGA2DMV, d2::PGA2DMV)
+    (x1, y1) = direction_coordinates(d1)
+    (x2, y2) = direction_coordinates(d2)
+    dot = x1 * x2 + y1 * y2
+    cross = x1 * y2 - y1 * x2
+    # atan2-style: robust and returns principal angle in [0, π]
+    atan(abs(cross), dot)
+end
+
+"""
+    angle_dd_signed(d1::PGA2DMV, d2::PGA2DMV)
+
+Signed angle from direction `d1` to `d2` in (-π, π], using `atan2` of the 2D cross/dot of Euclidean coordinates.
+"""
+function angle_dd_signed(d1::PGA2DMV, d2::PGA2DMV)
+    (x1, y1) = direction_coordinates(d1)
+    (x2, y2) = direction_coordinates(d2)
+    dot = x1 * x2 + y1 * y2
+    cross = x1 * y2 - y1 * x2
+    atan(cross, dot)
+end
 
 """
     dist_orient_lp(l::PGA2DMV, P::PGA2DMV)
@@ -271,6 +408,19 @@ function l_bisect_ll(l1::PGA2DMV, l2::PGA2DMV)
     l1n = normalize(l1)
     l2n = normalize(l2)
     (l1n + l2n, l1n - l2n)
+end
+
+"""
+    angle_ll_signed(l1::PGA2DMV, l2::PGA2DMV)
+
+Signed angle from line `l1` to `l2` in (-π, π], defined via their outward normals.
+"""
+function angle_ll_signed(l1::PGA2DMV, l2::PGA2DMV)
+    (a1, b1, _) = line_coordinates(l1)
+    (a2, b2, _) = line_coordinates(l2)
+    dot = a1 * a2 + b1 * b2
+    cross = a1 * b2 - b1 * a2
+    atan(cross, dot)
 end
 
 """
@@ -310,12 +460,12 @@ area_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV) = scalar((P1 ∨ P2 ∨ P3) / (2
 """
     area_loop(points)
 
-Calculates the oriented area of the loop defined by the iteratable points. 
+Calculates the oriented area of the loop defined by the iterable points. 
 """
 function area_loop(points)
     area = 0
     for k = 2:(length(points)-1)
-        area += triangle_area(points[1],points[k],points[k+1])
+        area += area_ppp(points[1], points[k], points[k+1])
     end
     area
 end
@@ -323,7 +473,7 @@ end
 """
     length_loop(points)
 
-Calculates the length of the loop defined by the iteratable points.
+Calculates the length of the loop defined by the iterable points.
 """
 function length_loop(points)
     Pp = last(points)
@@ -384,26 +534,158 @@ Moves x with the motor m.
 """
 move_m(x::PGA2DMV, m::PGA2DMV) = m ≀ x
 
-using Plots
+"""
+    line_pd(d::PGA2DMV, P::PGA2DMV) -> PGA2DMV
 
-@recipe function multivector_plot_recipe(mv::PGA2DMV)
-    if is_point(mv)
-        seriestype := :path
-        markershape --> :circle
-        markersize --> 5
-        (x,y) = point_coordinates(mv)
-        [x],[y]
-    elseif is_line(mv)
-        seriestype := :straightline
-        (a,b,c) = line_coordinates(mv)
-        if abs(a) > abs(b)
-            [-c/a, -c/a+b],[0,-a]
-        else
-            [0,-b],[-c/b, -c/b+a]
+Construct the line passing through point `P` with tangent direction `d`.
+"""
+function line_pd(d::PGA2DMV, P::PGA2DMV)
+    (dx, dy) = direction_coordinates(d)
+    (x0, y0) = point_coordinates(P)
+    # Line normal is perpendicular to direction: (a, b) = (dy, -dx)
+    a = dy
+    b = -dx
+    c = -(a * x0 + b * y0)
+    line(a, b, c)
+end
+
+
+"""
+    incenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV) -> PGA2DMV
+
+Returns the incenter of triangle (P1, P2, P3) as the intersection of internal angle bisectors.
+"""
+function incenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV)
+    # Triangle sides as lines
+    L12 = join_pp(P1, P2)
+    L23 = join_pp(P2, P3)
+    L31 = join_pp(P3, P1)
+    # Internal angle bisectors at vertices P1 and P2
+    B1a, B1b = l_bisect_ll(L31, L12)
+    B2a, B2b = l_bisect_ll(L12, L23)
+    candidates = (
+        meet_ll(B1a, B2a),
+        meet_ll(B1a, B2b),
+        meet_ll(B1b, B2a),
+        meet_ll(B1b, B2b),
+    )
+    # Oriented side signs for the opposite vertex of each side
+    s12 = sign(dist_orient_lp(L12, P3))
+    s23 = sign(dist_orient_lp(L23, P1))
+    s31 = sign(dist_orient_lp(L31, P2))
+    # Select the candidate that lies inside the triangle (same side as opposite vertices)
+    for X in candidates
+        is_point(X) || continue
+        sx12 = sign(dist_orient_lp(L12, X))
+        sx23 = sign(dist_orient_lp(L23, X))
+        sx31 = sign(dist_orient_lp(L31, X))
+        if sx12 == s12 && sx23 == s23 && sx31 == s31
+            return X
         end
-    else
-        nothing
     end
+    # Fallback (should not happen for non-degenerate triangles)
+    first(candidates)
+end
+
+"""
+    circumcenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV) -> PGA2DMV
+
+Returns the circumcenter of triangle (P1, P2, P3) as the intersection of two perpendicular bisectors.
+"""
+function circumcenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV)
+    L12 = join_pp(P1, P2); M12 = p_bisect_pp(P1, P2); B12 = l_ortho_lp(L12, M12)
+    L23 = join_pp(P2, P3); M23 = p_bisect_pp(P2, P3); B23 = l_ortho_lp(L23, M23)
+    meet_ll(B12, B23)
+end
+
+"""
+    orthocenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV) -> PGA2DMV
+
+Returns the orthocenter of triangle (P1, P2, P3) as the intersection of two altitudes.
+"""
+function orthocenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV)
+    L23 = join_pp(P2, P3); A1 = l_ortho_lp(L23, P1)
+    L31 = join_pp(P3, P1); A2 = l_ortho_lp(L31, P2)
+    meet_ll(A1, A2)
+end
+
+"""
+    try_incenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV) -> Union{PGA2DMV,Nothing}
+
+Non-throwing/degeneracy-friendly incenter; returns `nothing` if it cannot be determined.
+"""
+function try_incenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV)
+    L12 = join_pp(P1, P2)
+    L23 = join_pp(P2, P3)
+    L31 = join_pp(P3, P1)
+    B1a, B1b = l_bisect_ll(L31, L12)
+    B2a, B2b = l_bisect_ll(L12, L23)
+    candidates = (
+        meet_ll(B1a, B2a),
+        meet_ll(B1a, B2b),
+        meet_ll(B1b, B2a),
+        meet_ll(B1b, B2b),
+    )
+    s12 = sign(dist_orient_lp(L12, P3))
+    s23 = sign(dist_orient_lp(L23, P1))
+    s31 = sign(dist_orient_lp(L31, P2))
+    for X in candidates
+        is_point(X) || continue
+        sx12 = sign(dist_orient_lp(L12, X))
+        sx23 = sign(dist_orient_lp(L23, X))
+        sx31 = sign(dist_orient_lp(L31, X))
+        if sx12 == s12 && sx23 == s23 && sx31 == s31
+            return X
+        end
+    end
+    nothing
+end
+
+"""
+    try_circumcenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV) -> Union{PGA2DMV,Nothing}
+
+Non-throwing/degeneracy-friendly circumcenter; returns `nothing` if it cannot be determined.
+"""
+function try_circumcenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV)
+    L12 = join_pp(P1, P2); M12 = p_bisect_pp(P1, P2); B12 = l_ortho_lp(L12, M12)
+    L23 = join_pp(P2, P3); M23 = p_bisect_pp(P2, P3); B23 = l_ortho_lp(L23, M23)
+    X = meet_ll(B12, B23)
+    is_point(X) ? X : nothing
+end
+
+"""
+    try_orthocenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV) -> Union{PGA2DMV,Nothing}
+
+Non-throwing/degeneracy-friendly orthocenter; returns `nothing` if it cannot be determined.
+"""
+function try_orthocenter_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV)
+    L23 = join_pp(P2, P3); A1 = l_ortho_lp(L23, P1)
+    L31 = join_pp(P3, P1); A2 = l_ortho_lp(L31, P2)
+    X = meet_ll(A1, A2)
+    is_point(X) ? X : nothing
+end
+
+"""
+    incircle_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV) -> (center::PGA2DMV, radius::Real)
+
+Returns the incenter and inradius of triangle (P1, P2, P3).
+"""
+function incircle_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV)
+    C = incenter_ppp(P1, P2, P3)
+    L12 = join_pp(P1, P2)
+    r = dist_lp(L12, C)
+    return (center = C, radius = r)
+end
+
+"""
+    circumcircle_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV) -> (center::PGA2DMV, radius::Real)
+
+Returns the circumcenter and circumradius of triangle (P1, P2, P3).
+"""
+function circumcircle_ppp(P1::PGA2DMV, P2::PGA2DMV, P3::PGA2DMV)
+    C = circumcenter_ppp(P1, P2, P3)
+    r = dist_pp(C, P1)
+    return (center = C, radius = r)
 end
 
 

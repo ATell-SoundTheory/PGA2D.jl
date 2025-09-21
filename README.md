@@ -121,16 +121,22 @@ julia> @construct C "Pcirc" meet_ll "Lb12" "Lb23"
 point(0.5, 0.5) ≜ +4.0×e1e2+2.0×e0e1+2.0×e2e0 ∈ Cl(2, 0, 1)
 ```
 
-... and the center of gravity:
+... and the center of gravity (centroid):
 
 ```
-julia> @construct C "Lb1" (l1,l2)->l_bisect_ll(l1,l2)[1] "L12" "L13"
-line(-0.7071067811865475, 0.7071067811865475, 0.0) ≜ -1.0×e1+1.0×e2 ∈ Cl(2, 0, 1)
+julia> @construct C "M12" p_bisect_pp "P1" "P2"   # midpoint of side 12
+point(0.5, 0.0) ≜ +1.0×e1e2+0.5×e2e0 ∈ Cl(2, 0, 1)
 
-julia> @construct C "Lb2" (l1,l2)->l_bisect_ll(l1,l2)[2] "L12" "L23"
-line(0.4472135954999579, 0.8944271909999159, -0.4472135954999579) ≜ +0.7071067811865475×e1+1.414213562373095×e2-0.7071067811865475×e0 ∈ Cl(2, 0, 1)
+julia> @construct C "M23" p_bisect_pp "P2" "P3"   # midpoint of side 23
+point(0.5, 0.5) ≜ +2.0×e1e2+1.0×e0e1+1.0×e2e0 ∈ Cl(2, 0, 1)
 
-julia> @construct C "Pcog" meet_ll "Lb1" "Lb2"
+julia> @construct C "Med1" join_pp "P3" "M12"     # median from P3
+line(1.0, -1.0, -0.5) ≜ +1.0×e1-1.0×e2-0.5×e0 ∈ Cl(2, 0, 1)
+
+julia> @construct C "Med2" join_pp "P1" "M23"     # median from P1
+line(1.0, 0.0, -0.5) ≜ +1.0×e1-0.5×e0 ∈ Cl(2, 0, 1)
+
+julia> @construct C "Pcog" meet_ll "Med1" "Med2"
 point(0.3333333333333333, 0.3333333333333333) ≜ -2.1213203435596424×e1e2-0.7071067811865475×e0e1-0.7071067811865475×e2e0 ∈ Cl(2, 0, 1)
 ```
 
@@ -187,3 +193,22 @@ julia> @gif for x = 0:59
 
 
 For a more detailed discussion of the capabilities of `Constructions.jl` please see the package website.
+
+## Triangle centers: incenter vs centroid
+
+The incenter is the intersection of the internal angle bisectors; the centroid is the intersection of the medians. Here’s how to construct the incenter with PGA2D helpers:
+
+```
+julia> using PGA2D
+
+julia> P1, P2, P3 = point(0,0), point(1,0), point(0,1)
+(point(0.0, 0.0) ≜ +1×e1e2 ∈ Cl(2, 0, 1), point(1.0, 0.0) ≜ +1×e1e2+1×e2e0 ∈ Cl(2, 0, 1), point(0.0, 1.0) ≜ +1×e1e2+1×e0e1 ∈ Cl(2, 0, 1))
+
+julia> I = incenter_ppp(P1, P2, P3)
+point(0.2928932188134524, 0.2928932188134524) ≜ +3.414213562373095×e1e2+1.0×e0e1+1.0×e2e0 ∈ Cl(2, 0, 1)
+
+julia> Cg = meet_ll(join_pp(P3, p_bisect_pp(P1,P2)), join_pp(P1, p_bisect_pp(P2,P3)))
+point(0.3333333333333333, 0.3333333333333333) ≜ -2.1213203435596424×e1e2-0.7071067811865475×e0e1-0.7071067811865475×e2e0 ∈ Cl(2, 0, 1)
+```
+
+The incenter lies closer to the right angle in this isosceles right triangle, while the centroid is at (1/3, 1/3).
