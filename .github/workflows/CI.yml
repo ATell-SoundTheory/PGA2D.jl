@@ -21,12 +21,8 @@ jobs:
         with:
           version: ${{ matrix.julia }}
       - uses: julia-actions/cache@v1
-      - name: Build package
-        run: julia --color=yes --project -e 'using Pkg; Pkg.build()'
-      - name: Instantiate
-        run: julia --color=yes --project -e 'using Pkg; Pkg.instantiate()'
-      - name: Run tests
-        run: julia --color=yes --project -e 'using Pkg; Pkg.test(; coverage=false)'
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
 
   docs:
     name: Docs
