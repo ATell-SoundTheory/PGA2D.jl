@@ -15,6 +15,14 @@ jobs:
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
         julia: ['1.6', '1.10', '1']
+        exclude:
+          # Julia 1.6 cannot install on macos-latest (Apple Silicon) runners
+          - os: macos-latest
+            julia: '1.6'
+        include:
+          # Run Julia 1.6 on macos-13 (Intel) instead
+          - os: macos-13
+            julia: '1.6'
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
